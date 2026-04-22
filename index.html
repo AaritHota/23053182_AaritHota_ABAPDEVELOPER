@@ -1,0 +1,1134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>SAP ABAP — Custom PO Aging ALV Report</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+:root {
+  --bg: #0a0e1a;
+  --bg2: #0f1629;
+  --bg3: #141d35;
+  --card: #111827;
+  --border: #1e2d4a;
+  --border2: #263650;
+  --blue: #3b82f6;
+  --blue2: #60a5fa;
+  --teal: #14b8a6;
+  --green: #22c55e;
+  --yellow: #f59e0b;
+  --red: #ef4444;
+  --purple: #a78bfa;
+  --text: #e2e8f0;
+  --text2: #94a3b8;
+  --text3: #475569;
+  --mono: 'JetBrains Mono', monospace;
+  --head: 'Syne', sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:var(--mono);min-height:100vh;overflow-x:hidden;}
+
+body::before{
+  content:'';position:fixed;inset:0;
+  background:radial-gradient(ellipse 80% 50% at 50% -10%, rgba(59,130,246,0.12) 0%, transparent 60%);
+  pointer-events:none;z-index:0;
+}
+
+/* ── HEADER ── */
+header{
+  position:sticky;top:0;z-index:100;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 40px;height:60px;
+  background:rgba(10,14,26,0.92);
+  backdrop-filter:blur(16px);
+  border-bottom:1px solid var(--border);
+}
+.h-name{
+  font-size:11px;
+  color:var(--text2);
+  letter-spacing:0.05em;
+  margin-left:20px;
+}
+.h-logo{display:flex;align-items:center;gap:10px;font-family:var(--head);font-size:15px;font-weight:700;letter-spacing:0.05em;}
+.h-pill{background:var(--blue);color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;letter-spacing:0.1em;}
+.h-nav{display:flex;gap:4px;}
+.h-nav a{color:var(--text2);text-decoration:none;font-size:11px;padding:6px 14px;border-radius:6px;transition:all .2s;border:1px solid transparent;}
+.h-nav a:hover,.h-nav a.active{background:var(--bg3);border-color:var(--border);color:var(--text);}
+
+/* ── HERO ── */
+.hero{
+  position:relative;z-index:1;
+  padding:80px 40px 60px;
+  max-width:1100px;margin:0 auto;
+}
+.hero-tag{
+  display:inline-flex;align-items:center;gap:8px;
+  border:1px solid var(--border2);background:var(--bg3);
+  font-size:11px;color:var(--blue2);padding:5px 14px;border-radius:20px;
+  margin-bottom:24px;letter-spacing:0.08em;
+}
+.hero-tag span{width:6px;height:6px;border-radius:50%;background:var(--green);animation:pulse 2s infinite;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.3;}}
+h1{
+  font-family:var(--head);font-size:clamp(32px,5vw,58px);font-weight:800;
+  line-height:1.1;margin-bottom:20px;
+  background:linear-gradient(135deg,#e2e8f0 30%,#60a5fa 70%,#14b8a6 100%);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+}
+.hero-sub{font-size:14px;color:var(--text2);max-width:560px;line-height:1.7;margin-bottom:36px;}
+.hero-stats{display:flex;gap:24px;flex-wrap:wrap;}
+.stat{display:flex;flex-direction:column;gap:4px;}
+.stat-num{font-family:var(--head);font-size:26px;font-weight:700;color:var(--blue2);}
+.stat-lbl{font-size:11px;color:var(--text3);letter-spacing:0.08em;}
+
+/* ── SECTIONS ── */
+.section{position:relative;z-index:1;padding:0 40px 60px;max-width:1100px;margin:0 auto;}
+.section-title{
+  font-family:var(--head);font-size:11px;font-weight:700;
+  letter-spacing:0.15em;color:var(--text3);text-transform:uppercase;
+  margin-bottom:24px;display:flex;align-items:center;gap:12px;
+}
+.section-title::after{content:'';flex:1;height:1px;background:var(--border);}
+
+/* ── PROCESS FLOW ── */
+.flow{display:flex;align-items:stretch;gap:0;overflow-x:auto;padding-bottom:8px;margin-bottom:40px;}
+.flow-step{
+  flex:1;min-width:140px;
+  background:var(--card);border:1px solid var(--border);
+  padding:20px 16px;cursor:pointer;transition:all .25s;
+  position:relative;
+}
+.flow-step:first-child{border-radius:10px 0 0 10px;}
+.flow-step:last-child{border-radius:0 10px 10px 0;}
+.flow-step:not(:last-child)::after{
+  content:'›';position:absolute;right:-14px;top:50%;transform:translateY(-50%);
+  color:var(--text3);font-size:20px;z-index:2;
+}
+.flow-step:hover,.flow-step.active{
+  background:var(--bg3);border-color:var(--blue);
+  transform:translateY(-2px);
+  box-shadow:0 8px 24px rgba(59,130,246,0.15);
+}
+.flow-step.active{border-color:var(--teal);}
+.fs-num{font-size:10px;color:var(--text3);margin-bottom:6px;letter-spacing:0.1em;}
+.fs-icon{font-size:22px;margin-bottom:8px;}
+.fs-title{font-family:var(--head);font-size:12px;font-weight:700;color:var(--text);line-height:1.3;}
+.fs-tcode{font-size:10px;color:var(--blue2);margin-top:4px;}
+
+/* ── DETAIL PANEL ── */
+.detail-panel{
+  background:var(--card);border:1px solid var(--border);border-radius:12px;
+  overflow:hidden;margin-bottom:40px;
+  transition:all .3s;
+}
+.dp-header{
+  display:flex;align-items:center;gap:16px;
+  padding:20px 28px;
+  border-bottom:1px solid var(--border);
+  background:var(--bg3);
+}
+.dp-step-badge{
+  width:36px;height:36px;border-radius:8px;
+  background:linear-gradient(135deg,var(--blue),var(--teal));
+  display:flex;align-items:center;justify-content:center;
+  font-family:var(--head);font-weight:800;font-size:14px;color:#fff;
+  flex-shrink:0;
+}
+.dp-title{font-family:var(--head);font-size:18px;font-weight:700;}
+.dp-tcode-badge{
+  margin-left:auto;background:rgba(59,130,246,0.12);
+  border:1px solid rgba(59,130,246,0.3);color:var(--blue2);
+  font-size:11px;padding:4px 12px;border-radius:6px;letter-spacing:0.05em;
+}
+.dp-body{padding:28px;display:grid;grid-template-columns:1fr 1fr;gap:24px;}
+@media(max-width:700px){.dp-body{grid-template-columns:1fr;}}
+.dp-desc{font-size:13px;color:var(--text2);line-height:1.8;grid-column:1/-1;}
+.dp-col-title{font-size:10px;letter-spacing:0.12em;color:var(--text3);text-transform:uppercase;margin-bottom:12px;font-weight:600;}
+
+/* ── TABLES IN DETAIL ── */
+.info-table{width:100%;border-collapse:collapse;font-size:12px;}
+.info-table th{text-align:left;color:var(--text3);font-weight:500;padding:6px 10px;font-size:10px;letter-spacing:0.08em;border-bottom:1px solid var(--border);}
+.info-table td{padding:8px 10px;border-bottom:1px solid rgba(30,45,74,0.6);color:var(--text2);vertical-align:top;}
+.info-table tr:last-child td{border-bottom:none;}
+.info-table tr:hover td{background:rgba(59,130,246,0.04);}
+.tag-blue{background:rgba(59,130,246,0.12);color:var(--blue2);padding:2px 8px;border-radius:4px;font-size:10px;}
+.tag-green{background:rgba(34,197,94,0.12);color:var(--green);padding:2px 8px;border-radius:4px;font-size:10px;}
+.tag-yellow{background:rgba(245,158,11,0.12);color:var(--yellow);padding:2px 8px;border-radius:4px;font-size:10px;}
+.tag-red{background:rgba(239,68,68,0.12);color:var(--red);padding:2px 8px;border-radius:4px;font-size:10px;}
+
+/* ── CODE VIEWER ── */
+.code-block{
+  background:#07090f;border:1px solid var(--border);
+  border-radius:10px;overflow:hidden;margin-bottom:40px;
+}
+.code-toolbar{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:12px 20px;background:var(--bg3);border-bottom:1px solid var(--border);
+}
+.code-dots{display:flex;gap:6px;}
+.dot{width:10px;height:10px;border-radius:50%;}
+.dot-r{background:#ff5f57;}.dot-y{background:#ffbd2e;}.dot-g{background:#28c840;}
+.code-lang{font-size:11px;color:var(--text3);letter-spacing:0.1em;}
+.code-copy{
+  background:var(--bg);border:1px solid var(--border);color:var(--text2);
+  font-family:var(--mono);font-size:11px;padding:5px 14px;border-radius:6px;
+  cursor:pointer;transition:all .2s;
+}
+.code-copy:hover{border-color:var(--blue);color:var(--blue2);}
+.code-area{padding:24px 28px;overflow-x:auto;font-size:12.5px;line-height:1.8;}
+.code-area pre{white-space:pre;}
+
+/* Syntax colors */
+.kw{color:#c084fc;}        /* keywords */
+.tp{color:#34d399;}        /* types */
+.cm{color:#475569;font-style:italic;}  /* comments */
+.str{color:#fbbf24;}       /* strings */
+.fn{color:#60a5fa;}        /* function/report names */
+.op{color:#94a3b8;}        /* operators */
+.nm{color:#f87171;}        /* field names */
+.lit{color:#a78bfa;}       /* literals */
+
+/* ── TABLES REFERENCE ── */
+.tables-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin-bottom:40px;}
+.tbl-card{
+  background:var(--card);border:1px solid var(--border);border-radius:8px;
+  padding:16px;transition:all .2s;cursor:default;
+}
+.tbl-card:hover{border-color:var(--border2);background:var(--bg3);}
+.tbl-name{font-family:var(--head);font-size:15px;font-weight:700;color:var(--blue2);margin-bottom:4px;}
+.tbl-desc{font-size:11px;color:var(--text2);line-height:1.5;margin-bottom:8px;}
+.tbl-fields{display:flex;flex-wrap:wrap;gap:4px;}
+.tbl-field{font-size:10px;color:var(--text3);background:var(--bg);border:1px solid var(--border);padding:2px 6px;border-radius:3px;}
+
+/* ── ALV SIMULATOR ── */
+.alv-sim{
+  background:var(--card);border:1px solid var(--border);border-radius:12px;
+  overflow:hidden;margin-bottom:40px;
+}
+.alv-toolbar{
+  display:flex;align-items:center;gap:8px;
+  padding:10px 16px;background:#0d1117;border-bottom:1px solid var(--border);
+  flex-wrap:wrap;
+}
+.alv-btn{
+  background:var(--bg3);border:1px solid var(--border);color:var(--text2);
+  font-family:var(--mono);font-size:10px;padding:4px 12px;border-radius:4px;
+  cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:5px;
+}
+.alv-btn:hover{border-color:var(--blue);color:var(--blue2);}
+.alv-btn.primary{background:rgba(59,130,246,0.15);border-color:rgba(59,130,246,0.4);color:var(--blue2);}
+.alv-sep{width:1px;height:20px;background:var(--border);margin:0 4px;}
+.alv-title-bar{display:flex;align-items:center;gap:10px;margin-left:auto;font-size:11px;color:var(--text3);}
+.alv-table-wrap{overflow-x:auto;}
+.alv-table{width:100%;border-collapse:collapse;font-size:12px;}
+.alv-table th{
+  background:#0d1117;color:var(--text3);font-weight:500;
+  padding:8px 14px;text-align:left;
+  border-bottom:2px solid var(--border2);
+  font-size:11px;letter-spacing:0.05em;
+  white-space:nowrap;
+}
+.alv-table th.sortable{cursor:pointer;}
+.alv-table th.sortable:hover{color:var(--blue2);}
+.alv-table td{
+  padding:8px 14px;border-bottom:1px solid var(--border);
+  color:var(--text2);white-space:nowrap;
+}
+.alv-table tr:hover td{background:rgba(59,130,246,0.05);}
+.alv-table tr.selected td{background:rgba(59,130,246,0.08);}
+.days-chip{
+  display:inline-block;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:600;
+}
+.days-ok{background:rgba(34,197,94,0.12);color:var(--green);}
+.days-warn{background:rgba(245,158,11,0.12);color:var(--yellow);}
+.days-crit{background:rgba(239,68,68,0.12);color:var(--red);}
+.gr-full{color:var(--green);}
+.gr-part{color:var(--yellow);}
+.gr-none{color:var(--red);}
+.alv-status-bar{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:8px 16px;background:#0d1117;border-top:1px solid var(--border);
+  font-size:11px;color:var(--text3);
+}
+.filter-bar{
+  display:flex;align-items:center;gap:10px;
+  padding:10px 16px;background:var(--bg2);border-bottom:1px solid var(--border);
+  flex-wrap:wrap;
+}
+.filter-label{font-size:11px;color:var(--text3);}
+.filter-select,.filter-input{
+  background:var(--bg3);border:1px solid var(--border);color:var(--text);
+  font-family:var(--mono);font-size:11px;padding:5px 10px;border-radius:6px;
+  outline:none;
+}
+.filter-select:focus,.filter-input:focus{border-color:var(--blue);}
+
+/* ── ERROR SECTION ── */
+.errors-list{display:flex;flex-direction:column;gap:12px;margin-bottom:40px;}
+.error-card{
+  background:var(--card);border:1px solid var(--border);border-radius:10px;
+  overflow:hidden;cursor:pointer;transition:all .2s;
+}
+.error-card:hover{border-color:var(--border2);}
+.error-card.open{border-color:var(--yellow);}
+.ec-header{display:flex;align-items:center;gap:14px;padding:16px 20px;}
+.ec-icon{font-size:18px;}
+.ec-module{font-size:10px;color:var(--text3);letter-spacing:0.1em;}
+.ec-title{font-family:var(--head);font-size:14px;font-weight:600;}
+.ec-arrow{margin-left:auto;color:var(--text3);transition:transform .2s;font-size:14px;}
+.error-card.open .ec-arrow{transform:rotate(90deg);}
+.ec-body{
+  padding:0 20px;max-height:0;overflow:hidden;transition:all .3s;
+  border-top:0px solid var(--border);
+}
+.error-card.open .ec-body{
+  padding:16px 20px;max-height:300px;
+  border-top:1px solid var(--border);
+}
+.ec-body-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;font-size:12px;}
+@media(max-width:600px){.ec-body-grid{grid-template-columns:1fr;}}
+.ec-label{font-size:10px;color:var(--text3);letter-spacing:0.08em;margin-bottom:6px;}
+.ec-val{color:var(--text2);line-height:1.6;}
+.ec-fix{color:var(--green);font-family:var(--mono);font-size:11px;}
+
+/* ── INTERVIEW SECTION ── */
+.qa-list{display:flex;flex-direction:column;gap:10px;margin-bottom:40px;}
+.qa-card{
+  background:var(--card);border:1px solid var(--border);border-radius:8px;
+  overflow:hidden;
+}
+.qa-q{
+  display:flex;align-items:flex-start;gap:12px;
+  padding:14px 20px;cursor:pointer;
+}
+.qa-q:hover{background:var(--bg3);}
+.q-mark{
+  width:22px;height:22px;border-radius:4px;background:rgba(59,130,246,0.15);
+  color:var(--blue2);font-size:12px;font-weight:700;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;
+}
+.q-text{font-size:13px;color:var(--text);line-height:1.5;}
+.qa-a{
+  padding:0 20px;max-height:0;overflow:hidden;transition:all .3s;
+  font-size:12px;color:var(--text2);line-height:1.7;
+}
+.qa-card.open .qa-a{padding:0 20px 16px 54px;max-height:200px;}
+.qa-card.open .q-mark{background:rgba(20,184,166,0.15);color:var(--teal);}
+
+/* ── FOOTER ── */
+footer{
+  position:relative;z-index:1;
+  text-align:center;padding:40px;
+  border-top:1px solid var(--border);
+  font-size:11px;color:var(--text3);
+  background:var(--bg);
+}
+
+/* ── ANIMATIONS ── */
+.fade-in{animation:fadeIn .4s ease both;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:none;}}
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar{width:6px;height:6px;}
+::-webkit-scrollbar-track{background:var(--bg2);}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px;}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <div class="h-logo">
+    <span class="h-pill">ABAP</span>
+    SAP Custom ALV Report
+  </div>
+  <div class="h-name">AARIT HOTA | 23053182</div>
+  <nav class="h-nav">
+    <a href="#process" class="active">Process</a>
+    <a href="#code">Code</a>
+    <a href="#alv">ALV Demo</a>
+    <a href="#errors">Errors</a>
+    <a href="#interview">Interview</a>
+  </nav>
+</header>
+
+<!-- HERO -->
+<section class="hero fade-in">
+  <div class="hero-tag"><span></span>SAP ABAP · Real Development Scenario</div>
+  <h1>Custom PO Aging<br/>ALV Report</h1>
+  <p class="hero-sub">
+    A complete end-to-end ABAP development scenario — building a custom Purchase Order Aging Report using ALV Grid Display. Covers data retrieval from EKKO/EKPO/EKBE, days-open calculation, GR status enrichment, and interactive ALV output.
+  </p>
+  <div class="hero-stats">
+    <div class="stat"><div class="stat-num">6</div><div class="stat-lbl">Dev Steps</div></div>
+    <div class="stat"><div class="stat-num">3</div><div class="stat-lbl">DB Tables</div></div>
+    <div class="stat"><div class="stat-num">REUSE_ALV</div><div class="stat-lbl">Function Module</div></div>
+    <div class="stat"><div class="stat-num">ABAP</div><div class="stat-lbl">Language</div></div>
+  </div>
+</section>
+
+<!-- PROCESS FLOW -->
+<section class="section" id="process">
+  <div class="section-title">Development Process Flow</div>
+  <div class="flow" id="flowSteps">
+    <div class="flow-step active" onclick="selectStep(0)">
+      <div class="fs-num">STEP 01</div>
+      <div class="fs-icon">📋</div>
+      <div class="fs-title">Requirement Analysis</div>
+      <div class="fs-tcode">Design Phase</div>
+    </div>
+    <div class="flow-step" onclick="selectStep(1)">
+      <div class="fs-num">STEP 02</div>
+      <div class="fs-icon">🗂️</div>
+      <div class="fs-title">Data Dictionary Setup</div>
+      <div class="fs-tcode">SE11 / SE80</div>
+    </div>
+    <div class="flow-step" onclick="selectStep(2)">
+      <div class="fs-num">STEP 03</div>
+      <div class="fs-icon">⌨️</div>
+      <div class="fs-title">Selection Screen</div>
+      <div class="fs-tcode">PARAMETERS</div>
+    </div>
+    <div class="flow-step" onclick="selectStep(3)">
+      <div class="fs-num">STEP 04</div>
+      <div class="fs-icon">🔍</div>
+      <div class="fs-title">Data Retrieval</div>
+      <div class="fs-tcode">SELECT JOIN</div>
+    </div>
+    <div class="flow-step" onclick="selectStep(4)">
+      <div class="fs-num">STEP 05</div>
+      <div class="fs-icon">⚙️</div>
+      <div class="fs-title">Data Enrichment</div>
+      <div class="fs-tcode">LOOP AT / EKBE</div>
+    </div>
+    <div class="flow-step" onclick="selectStep(5)">
+      <div class="fs-num">STEP 06</div>
+      <div class="fs-icon">📊</div>
+      <div class="fs-title">ALV Grid Display</div>
+      <div class="fs-tcode">REUSE_ALV</div>
+    </div>
+  </div>
+
+  <!-- DETAIL PANEL -->
+  <div class="detail-panel" id="detailPanel">
+    <div class="dp-header">
+      <div class="dp-step-badge" id="dpBadge">1</div>
+      <div class="dp-title" id="dpTitle">Requirement Analysis</div>
+      <div class="dp-tcode-badge" id="dpTcode">Design Phase</div>
+    </div>
+    <div class="dp-body" id="dpBody"></div>
+  </div>
+</section>
+
+<!-- CODE SECTION -->
+<section class="section" id="code">
+  <div class="section-title">ABAP Source Code</div>
+  <div class="code-block">
+    <div class="code-toolbar">
+      <div class="code-dots"><div class="dot dot-r"></div><div class="dot dot-y"></div><div class="dot dot-g"></div></div>
+      <div class="code-lang">ZPO_AGING_REPORT.abap — ABAP</div>
+      <button class="code-copy" onclick="copyCode()">⎘ Copy Code</button>
+    </div>
+    <div class="code-area"><pre id="codeContent"></pre></div>
+  </div>
+</section>
+
+<!-- DB TABLES REFERENCE -->
+<section class="section">
+  <div class="section-title">Key Database Tables</div>
+  <div class="tables-grid">
+    <div class="tbl-card">
+      <div class="tbl-name">EKKO</div>
+      <div class="tbl-desc">Purchasing Document Header — stores all PO header data</div>
+      <div class="tbl-fields">
+        <span class="tbl-field">EBELN</span><span class="tbl-field">LIFNR</span><span class="tbl-field">BEDAT</span>
+        <span class="tbl-field">BSTYP</span><span class="tbl-field">LOEKZ</span>
+      </div>
+    </div>
+    <div class="tbl-card">
+      <div class="tbl-name">EKPO</div>
+      <div class="tbl-desc">Purchasing Document Item — line item details per PO</div>
+      <div class="tbl-fields">
+        <span class="tbl-field">EBELN</span><span class="tbl-field">EBELP</span><span class="tbl-field">MATNR</span>
+        <span class="tbl-field">MENGE</span><span class="tbl-field">NETPR</span><span class="tbl-field">ELIKZ</span>
+      </div>
+    </div>
+    <div class="tbl-card">
+      <div class="tbl-name">EKBE</div>
+      <div class="tbl-desc">PO History — records GR, IR events against each PO</div>
+      <div class="tbl-fields">
+        <span class="tbl-field">EBELN</span><span class="tbl-field">EBELP</span><span class="tbl-field">VGABE</span>
+        <span class="tbl-field">MENGE</span><span class="tbl-field">DMBTR</span>
+      </div>
+    </div>
+    <div class="tbl-card">
+      <div class="tbl-name">MARD</div>
+      <div class="tbl-desc">Storage Location Stock — current inventory levels</div>
+      <div class="tbl-fields">
+        <span class="tbl-field">MATNR</span><span class="tbl-field">WERKS</span><span class="tbl-field">LGORT</span>
+        <span class="tbl-field">LABST</span>
+      </div>
+    </div>
+    <div class="tbl-card">
+      <div class="tbl-name">LFA1</div>
+      <div class="tbl-desc">Vendor Master — general data including vendor name</div>
+      <div class="tbl-fields">
+        <span class="tbl-field">LIFNR</span><span class="tbl-field">NAME1</span><span class="tbl-field">LAND1</span>
+        <span class="tbl-field">KTOKK</span>
+      </div>
+    </div>
+    <div class="tbl-card">
+      <div class="tbl-name">MAKT</div>
+      <div class="tbl-desc">Material Description — short text per language</div>
+      <div class="tbl-fields">
+        <span class="tbl-field">MATNR</span><span class="tbl-field">SPRAS</span><span class="tbl-field">MAKTX</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ALV SIMULATOR -->
+<section class="section" id="alv">
+  <div class="section-title">ALV Report — Live Simulator</div>
+  <div class="alv-sim">
+    <div class="alv-toolbar">
+      <button class="alv-btn primary" onclick="runReport()">▶ Execute (F8)</button>
+      <div class="alv-sep"></div>
+      <button class="alv-btn" onclick="sortByDays()">⇅ Sort Days</button>
+      <button class="alv-btn" onclick="exportCSV()">⬇ Download CSV</button>
+      <button class="alv-btn" onclick="toggleSumRow()">Σ Totals</button>
+      <div class="alv-sep"></div>
+      <div class="alv-title-bar">ZPO_AGING_REPORT &nbsp;|&nbsp; <span id="rowCountLabel">8 rows</span></div>
+    </div>
+    <div class="filter-bar">
+      <span class="filter-label">Filter:</span>
+      <select class="filter-select" id="filterStatus" onchange="applyFilter()">
+        <option value="all">All GR Status</option>
+        <option value="none">No GR</option>
+        <option value="partial">Partial GR</option>
+        <option value="full">Full GR</option>
+      </select>
+      <select class="filter-select" id="filterAge" onchange="applyFilter()">
+        <option value="all">All Ages</option>
+        <option value="critical">Critical (&gt;60 days)</option>
+        <option value="warn">Warning (30-60)</option>
+        <option value="ok">OK (&lt;30 days)</option>
+      </select>
+      <input class="filter-input" id="filterVendor" placeholder="Vendor…" oninput="applyFilter()" style="width:140px;"/>
+    </div>
+    <div class="alv-table-wrap">
+      <table class="alv-table" id="alvTable">
+        <thead>
+          <tr>
+            <th></th>
+            <th class="sortable" onclick="sortCol('poNum')">PO Number ↕</th>
+            <th class="sortable" onclick="sortCol('vendor')">Vendor ↕</th>
+            <th>Material</th>
+            <th class="sortable" onclick="sortCol('poDate')">PO Date ↕</th>
+            <th class="sortable" onclick="sortCol('daysOpen')">Days Open ↕</th>
+            <th>Order Qty</th>
+            <th>GR Qty</th>
+            <th>Net Price (₹)</th>
+            <th>GR Status</th>
+          </tr>
+        </thead>
+        <tbody id="alvBody"></tbody>
+        <tfoot id="alvFoot"></tfoot>
+      </table>
+    </div>
+    <div class="alv-status-bar">
+      <span id="statusMsg">Report executed successfully.</span>
+      <span>Program: ZPO_AGING_REPORT &nbsp;|&nbsp; <span id="execTime">Exec: 0.32s</span></span>
+    </div>
+  </div>
+</section>
+
+<!-- ERRORS -->
+<section class="section" id="errors">
+  <div class="section-title">Common ABAP Errors &amp; Fixes</div>
+  <div class="errors-list" id="errorsList"></div>
+</section>
+
+<!-- INTERVIEW Q&A -->
+<section class="section" id="interview">
+  <div class="section-title">Scenario-Based Interview Q&amp;A</div>
+  <div class="qa-list" id="qaList"></div>
+</section>
+
+<footer>
+  SAP ABAP — Custom PO Aging ALV Report &nbsp;·&nbsp; End-to-End Project · LearnToSAP Reference · 2026
+</footer>
+
+<script>
+// ────────────────────────────────────────────────────────
+// DATA
+// ────────────────────────────────────────────────────────
+const steps = [
+  {
+    num:1, icon:'📋', title:'Requirement Analysis', tcode:'Design Phase',
+    desc:'The business raises a requirement: "We need to see all open Purchase Orders, how long each has been pending, whether goods have been received, and the total value outstanding." This is the most common MM report request in real SAP projects. The ABAP developer analyses which tables hold the data, drafts the output layout, and gets the requirement signed off before writing a single line of code.',
+    left:{title:'Business Requirements',rows:[
+      ['Output Field','Source'],
+      ['PO Number','EKKO-EBELN'],
+      ['Vendor','EKKO-LIFNR'],
+      ['PO Date','EKKO-BEDAT'],
+      ['Days Open','SY-DATUM − BEDAT'],
+      ['Material','EKPO-MATNR'],
+      ['Order Qty','EKPO-MENGE'],
+      ['GR Qty','EKBE (VGABE=1)'],
+      ['Net Price','EKPO-NETPR'],
+    ]},
+    right:{title:'Scope & Filters',rows:[
+      ['Filter','Value'],
+      ['Doc Type','F (Standard PO)'],
+      ['Delete Flag','LOEKZ = SPACE'],
+      ['Delivery Flag','ELIKZ = SPACE'],
+      ['Company Code','Selection Screen'],
+      ['Plant','Selection Screen'],
+      ['Vendor','Selection Screen'],
+    ]}
+  },
+  {
+    num:2, icon:'🗂️', title:'Data Dictionary Setup', tcode:'SE11 / SE80',
+    desc:'Before writing the REPORT program, a custom structure ZTY_PO is created in SE11 (Data Dictionary) to hold the output row data. This is referenced by REUSE_ALV_GRID_DISPLAY as the field catalogue source. The structure mirrors the internal table type defined in the program. Good ABAP practice always defines types in the Dictionary rather than inline in programs for reuse.',
+    left:{title:'Structure ZTY_PO Fields',rows:[
+      ['Field','Type / Domain','Description'],
+      ['EBELN','EKKO-EBELN','PO Number'],
+      ['LIFNR','EKKO-LIFNR','Vendor Code'],
+      ['BEDAT','EKKO-BEDAT','PO Date'],
+      ['MATNR','EKPO-MATNR','Material'],
+      ['MENGE','EKPO-MENGE','Order Qty'],
+      ['WEMNG','EKET-WEMNG','GR Qty'],
+      ['NETPR','EKPO-NETPR','Net Price'],
+      ['DAYS_OPEN','INT4','Days Open'],
+    ]},
+    right:{title:'T-Codes Used',rows:[
+      ['T-Code','Purpose'],
+      ['SE11','Create/view structure ZTY_PO'],
+      ['SE80','Object Navigator (program + dict)'],
+      ['SE38','ABAP Editor — write report code'],
+      ['SE37','Function Module Browser (ALV FM)'],
+      ['SA38','Execute report in production'],
+    ]}
+  },
+  {
+    num:3, icon:'⌨️', title:'Selection Screen', tcode:'PARAMETERS / SELECT-OPTIONS',
+    desc:'The selection screen lets end users filter the report before execution. In ABAP, PARAMETERS define single-value inputs and SELECT-OPTIONS define ranges. Good selection screen design reduces the data volume fetched from the database and improves report performance. All selection screen inputs must be validated in the AT SELECTION-SCREEN event before the database is hit.',
+    left:{title:'Selection Screen Parameters',rows:[
+      ['Parameter','Type','Description'],
+      ['P_BUKRS','EKKO-BUKRS','Company Code'],
+      ['P_WERKS','EKPO-WERKS','Plant'],
+      ['S_LIFNR','EKKO-LIFNR','Vendor Range'],
+      ['S_BEDAT','EKKO-BEDAT','PO Date Range'],
+      ['P_DAYS','INT4','Min Days Open'],
+    ]},
+    right:{title:'AT SELECTION-SCREEN Checks',rows:[
+      ['Validation','Check'],
+      ['Company Code','Must exist in T001'],
+      ['Plant','Must exist in T001W'],
+      ['Date Range','TO ≥ FROM'],
+      ['Min Days','Must be ≥ 0'],
+    ]}
+  },
+  {
+    num:4, icon:'🔍', title:'Data Retrieval — SELECT JOIN', tcode:'SELECT EKKO JOIN EKPO',
+    desc:'A single SELECT with JOIN is used to fetch PO header and item data together from EKKO and EKPO. This is critical for performance — a nested SELECT inside a LOOP (the "SELECT in LOOP" antipattern) would cause extremely slow execution on large PO tables with millions of records. The WHERE clause filters to open, non-deleted purchase orders only, minimising the data transferred from the database layer.',
+    left:{title:'SELECT Statement Logic',rows:[
+      ['Clause','Value / Purpose'],
+      ['FROM','EKKO JOIN EKPO ON EBELN'],
+      ['WHERE BSTYP','= "F" → POs only'],
+      ['WHERE LOEKZ','= SPACE → not deleted'],
+      ['WHERE ELIKZ','= SPACE → not completed'],
+      ['INTO TABLE','@lt_po (internal table)'],
+    ]},
+    right:{title:'Performance Best Practices',rows:[
+      ['Rule','Reason'],
+      ['Use JOIN not nested SELECT','Avoids SELECT-in-LOOP'],
+      ['Restrict with WHERE','Reduces DB transfer'],
+      ['Use @DATA inline','Modern ABAP syntax'],
+      ['Index on EBELN+EBELP','Fast key access'],
+      ['Avoid SELECT *','Fetch only needed fields'],
+    ]}
+  },
+  {
+    num:5, icon:'⚙️', title:'Data Enrichment — LOOP + EKBE', tcode:'LOOP AT lt_po / SELECT EKBE',
+    desc:'After the main SELECT, the internal table is enriched in a LOOP. For each PO line, the days open is calculated as SY-DATUM minus the PO creation date. A secondary SELECT aggregates the total goods receipt quantity from table EKBE (where VGABE = "1" means Goods Receipt). Note: in real production code, this secondary SELECT should be optimised with a FOR ALL ENTRIES statement to avoid a SELECT inside the LOOP on large datasets.',
+    left:{title:'Enrichment Logic',rows:[
+      ['Field','Calculation'],
+      ['DAYS_OPEN','SY-DATUM − LS_PO-BEDAT'],
+      ['WEMNG','SELECT SUM(MENGE) FROM EKBE'],
+      ['EKBE Filter','VGABE = "1" (GR events only)'],
+      ['GR Status','WEMNG = 0: None; < MENGE: Partial; = MENGE: Full'],
+    ]},
+    right:{title:'EKBE VGABE Values',rows:[
+      ['VGABE','Meaning'],
+      ['1','Goods Receipt (GR)'],
+      ['2','Invoice Receipt (IR)'],
+      ['3','Subsequent Debit/Credit'],
+      ['6','Return Delivery'],
+      ['9','Cancellation'],
+    ]}
+  },
+  {
+    num:6, icon:'📊', title:'ALV Grid Display', tcode:'REUSE_ALV_GRID_DISPLAY',
+    desc:'The final step calls the standard SAP Function Module REUSE_ALV_GRID_DISPLAY to render the internal table as an interactive ALV (ABAP List Viewer) grid. ALV automatically provides sorting, filtering, column layout, totalling, and Excel export with no extra code. The I_STRUCTURE_NAME parameter points to the Dictionary structure ZTY_PO so ALV knows the column headers and data types automatically.',
+    left:{title:'ALV Function Module Parameters',rows:[
+      ['Parameter','Value'],
+      ['I_STRUCTURE_NAME','ZTY_PO'],
+      ['T_OUTTAB','LT_PO (internal table)'],
+      ['I_SAVE','A (all layout options)'],
+      ['IS_LAYOUT','Column totals, zebra lines'],
+      ['IT_SORT','Sort by DAYS_OPEN descending'],
+    ]},
+    right:{title:'ALV Features (Free)',rows:[
+      ['Feature','Available'],
+      ['Sort by any column','✓ Auto'],
+      ['Filter rows','✓ Auto'],
+      ['Export to Excel','✓ Auto'],
+      ['Column totals','✓ Via IT_FIELDCAT'],
+      ['Save layout','✓ I_SAVE = A'],
+      ['Print preview','✓ Auto'],
+    ]}
+  },
+];
+
+const poData = [
+  {poNum:'4500001234',vendor:'V001 — Steel Suppliers Ltd',material:'STEEL-001',poDate:'2026-01-10',daysOpen:101,orderQty:500,grQty:500,netPrice:225000},
+  {poNum:'4500001289',vendor:'V002 — Apex Components',material:'COMP-045',poDate:'2026-02-18',daysOpen:62,orderQty:200,grQty:120,netPrice:84000},
+  {poNum:'4500001301',vendor:'V003 — National Fasteners',material:'FAST-010',poDate:'2026-03-01',daysOpen:51,orderQty:1000,grQty:0,netPrice:15000},
+  {poNum:'4500001345',vendor:'V001 — Steel Suppliers Ltd',material:'STEEL-002',poDate:'2026-03-15',daysOpen:37,orderQty:300,grQty:300,netPrice:139500},
+  {poNum:'4500001388',vendor:'V004 — Metro Plastics',material:'PLAS-007',poDate:'2026-03-22',daysOpen:30,orderQty:800,grQty:400,netPrice:48000},
+  {poNum:'4500001412',vendor:'V005 — Sun Cables Pvt',material:'CABL-021',poDate:'2026-04-01',daysOpen:20,orderQty:150,grQty:0,netPrice:63000},
+  {poNum:'4500001450',vendor:'V002 — Apex Components',material:'COMP-088',poDate:'2026-04-10',daysOpen:11,orderQty:600,grQty:600,netPrice:180000},
+  {poNum:'4500001467',vendor:'V006 — Global Hardware',material:'HARD-003',poDate:'2026-04-15',daysOpen:6,orderQty:250,grQty:100,netPrice:37500},
+];
+
+const errors = [
+  {
+    icon:'🐌',module:'ABAP Performance',
+    title:'SELECT Inside LOOP — Antipattern',
+    cause:'A SELECT statement placed inside a LOOP AT loop fetches from the database once per row of the internal table. On a table with 10,000 PO items, this fires 10,000 individual DB calls.',
+    fix:'LOOP AT lt_po INTO ls_po.\n  SELECT SUM(menge) FROM ekbe ...\nENDLOOP.\n→ Replace with FOR ALL ENTRIES or a single aggregated SELECT before the loop.',
+    tcode:'SE38 / SM50',impact:'High'
+  },
+  {
+    icon:'🔴',module:'ABAP Runtime',
+    title:'Dump — ASSIGN_BASE_WRONG_PATTERN',
+    cause:'Occurs when a field symbol is assigned using ASSIGN but the target structure has changed (field no longer exists after a transport). The ABAP runtime cannot find the field offset.',
+    fix:'Always check IS ASSIGNED after ASSIGN. Use structured field symbols: FIELD-SYMBOLS: <fs> TYPE ty_po.',
+    tcode:'ST22 (Dump Analysis)',impact:'Critical'
+  },
+  {
+    icon:'⚠️',module:'ALV Output',
+    title:'Column Headers Show Field Names Not Texts',
+    cause:'When I_STRUCTURE_NAME is set but the Dictionary structure has no field labels defined, ALV displays raw field names like EBELN instead of "PO Number".',
+    fix:'Add short/medium/long texts to each field in SE11 structure definition. Or pass a manually built IT_FIELDCAT with SELTEXT_M populated.',
+    tcode:'SE11 / SE38',impact:'Medium'
+  },
+  {
+    icon:'🔒',module:'Authorization',
+    title:'Report Shows No Data — Authorization Object M_BEST_BSA',
+    cause:'The user running the report lacks authorization for Purchasing Document Type (BSTYP = F) in the plant/company code combination. SAP silently returns zero rows.',
+    fix:'Check SU53 after running report. Add authorization object M_BEST_BSA with correct BSTYP, WERKS values in SU01/PFCG role.',
+    tcode:'SU53 / PFCG',impact:'High'
+  },
+];
+
+const qa = [
+  {
+    q:'Why do you use SELECT...JOIN instead of two separate SELECT statements?',
+    a:'A JOIN fetches data from EKKO and EKPO in a single database roundtrip. Two separate SELECTs would require looping one result to match the other — the classic SELECT-in-LOOP antipattern. On an HANA system a JOIN is also push-down optimised, running entirely in the database layer.'
+  },
+  {
+    q:'What is VGABE = "1" in table EKBE and why does it matter?',
+    a:'VGABE is the Transaction/Event type in the PO history table EKBE. Value "1" means Goods Receipt. By filtering VGABE = "1" when summing EKBE-MENGE, we get only the GR quantity, not IR (invoice) or other event quantities. Without this filter the GR quantity would be incorrect.'
+  },
+  {
+    q:'What happens if you pass I_STRUCTURE_NAME to REUSE_ALV_GRID_DISPLAY without defining the structure in SE11?',
+    a:'The function module raises exception PROGRAM_ERROR and the report terminates with a short dump. The structure must exist in the ABAP Dictionary. Alternative: build and pass the IT_FIELDCAT parameter manually with field catalogue entries instead of using I_STRUCTURE_NAME.'
+  },
+  {
+    q:'How would you add a traffic-light column to highlight POs older than 60 days in red?',
+    a:'Add a field (e.g., LIGHT TYPE C LENGTH 1) to the structure. In the LOOP enrichment, set LIGHT = "1" (green), "2" (yellow), or "3" (red) based on DAYS_OPEN thresholds. In the field catalogue, set the EMPHASIZE attribute or use IT_FIELDCAT-ICON = "X" with the LIGHT field mapped to ALV_COLOR column.'
+  },
+  {
+    q:'How would you optimise the EKBE secondary SELECT for a report running on 50,000 PO lines?',
+    a:'Replace the SELECT SUM inside LOOP with a single SELECT using FOR ALL ENTRIES IN lt_po to fetch all relevant EKBE rows at once. Then use a sorted secondary table with BINARY SEARCH or a hashed table keyed by EBELN+EBELP to look up GR qty without any further DB calls.'
+  },
+];
+
+// ────────────────────────────────────────────────────────
+// ABAP CODE (displayed with syntax highlighting)
+// ────────────────────────────────────────────────────────
+const abapCode = `<span class="cm">*&-------------------------------------------------------------*
+*& Report  ZPO_AGING_REPORT
+*& Custom PO Aging Report — Real SAP ABAP Scenario
+*& Displays open POs with days open and GR status
+*&-------------------------------------------------------------*</span>
+
+<span class="kw">REPORT</span> <span class="fn">zpo_aging_report</span>.
+
+<span class="cm">"---- Type Definition ----</span>
+<span class="kw">TYPES</span>: <span class="kw">BEGIN OF</span> <span class="tp">ty_po</span>,
+  <span class="nm">ebeln</span>     <span class="kw">TYPE</span> <span class="tp">ekko-ebeln</span>,   <span class="cm">"PO Number</span>
+  <span class="nm">lifnr</span>     <span class="kw">TYPE</span> <span class="tp">ekko-lifnr</span>,   <span class="cm">"Vendor</span>
+  <span class="nm">bedat</span>     <span class="kw">TYPE</span> <span class="tp">ekko-bedat</span>,   <span class="cm">"PO Date</span>
+  <span class="nm">matnr</span>     <span class="kw">TYPE</span> <span class="tp">ekpo-matnr</span>,   <span class="cm">"Material</span>
+  <span class="nm">menge</span>     <span class="kw">TYPE</span> <span class="tp">ekpo-menge</span>,   <span class="cm">"Order Qty</span>
+  <span class="nm">wemng</span>     <span class="kw">TYPE</span> <span class="tp">eket-wemng</span>,   <span class="cm">"GR Qty</span>
+  <span class="nm">netpr</span>     <span class="kw">TYPE</span> <span class="tp">ekpo-netpr</span>,   <span class="cm">"Net Price</span>
+  <span class="nm">days_open</span> <span class="kw">TYPE</span> <span class="tp">i</span>,             <span class="cm">"Days PO is open</span>
+<span class="kw">END OF</span> <span class="tp">ty_po</span>.
+
+<span class="kw">DATA</span>: <span class="nm">lt_po</span> <span class="kw">TYPE TABLE OF</span> <span class="tp">ty_po</span>.
+
+<span class="cm">"---- Selection Screen ----</span>
+<span class="kw">SELECTION-SCREEN BEGIN OF BLOCK</span> b1 <span class="kw">WITH FRAME TITLE</span> <span class="str">'Selection Criteria'</span>.
+  <span class="kw">PARAMETERS</span>:     <span class="nm">p_bukrs</span> <span class="kw">TYPE</span> <span class="tp">ekko-bukrs</span> <span class="kw">OBLIGATORY</span>,
+                  <span class="nm">p_werks</span> <span class="kw">TYPE</span> <span class="tp">ekpo-werks</span>.
+  <span class="kw">SELECT-OPTIONS</span>: <span class="nm">s_lifnr</span> <span class="kw">FOR</span> <span class="tp">ekko-lifnr</span>,
+                  <span class="nm">s_bedat</span> <span class="kw">FOR</span> <span class="tp">ekko-bedat</span>.
+<span class="kw">SELECTION-SCREEN END OF BLOCK</span> b1.
+
+<span class="cm">"---- Step 1: Fetch open POs — EKKO JOIN EKPO ----</span>
+<span class="kw">START-OF-SELECTION</span>.
+  <span class="kw">SELECT</span> ekko~ebeln ekko~lifnr ekko~bedat
+         ekpo~matnr ekpo~menge ekpo~netpr
+    <span class="kw">FROM</span> <span class="tp">ekko</span>
+    <span class="kw">JOIN</span> <span class="tp">ekpo</span> <span class="kw">ON</span> ekpo~ebeln = ekko~ebeln
+    <span class="kw">INTO TABLE</span> @<span class="nm">lt_po</span>
+    <span class="kw">WHERE</span> ekko~bukrs  = @<span class="nm">p_bukrs</span>
+      <span class="kw">AND</span> ekko~bstyp  = <span class="str">'F'</span>       <span class="cm">"Purchase Orders only</span>
+      <span class="kw">AND</span> ekko~loekz  = <span class="str">' '</span>      <span class="cm">"Not deleted</span>
+      <span class="kw">AND</span> ekko~lifnr  <span class="kw">IN</span> @<span class="nm">s_lifnr</span>
+      <span class="kw">AND</span> ekko~bedat  <span class="kw">IN</span> @<span class="nm">s_bedat</span>
+      <span class="kw">AND</span> ekpo~elikz  = <span class="str">' '</span>.     <span class="cm">"Delivery not complete</span>
+
+  <span class="kw">CHECK</span> <span class="nm">lt_po</span> <span class="kw">IS NOT INITIAL</span>.
+
+<span class="cm">"---- Step 2: Enrich with days open + GR qty ----</span>
+  <span class="kw">LOOP AT</span> <span class="nm">lt_po</span> <span class="kw">INTO DATA</span>(<span class="nm">ls_po</span>).
+
+    <span class="cm">"Calculate how many days the PO has been open</span>
+    <span class="nm">ls_po</span>-days_open = <span class="fn">sy-datum</span> - <span class="nm">ls_po</span>-bedat.
+
+    <span class="cm">"Fetch total GR quantity from PO history (EKBE)</span>
+    <span class="kw">SELECT</span> <span class="fn">SUM</span>( menge )
+      <span class="kw">FROM</span> <span class="tp">ekbe</span>
+      <span class="kw">INTO</span> @<span class="nm">ls_po</span>-wemng
+      <span class="kw">WHERE</span> ebeln = @<span class="nm">ls_po</span>-ebeln
+        <span class="kw">AND</span> vgabe = <span class="str">'1'</span>.   <span class="cm">"1 = Goods Receipt</span>
+
+    <span class="kw">MODIFY</span> <span class="nm">lt_po</span> <span class="kw">FROM</span> <span class="nm">ls_po</span>.
+  <span class="kw">ENDLOOP</span>.
+
+<span class="cm">"---- Step 3: Display via ALV Grid ----</span>
+  <span class="kw">CALL FUNCTION</span> <span class="str">'REUSE_ALV_GRID_DISPLAY'</span>
+    <span class="kw">EXPORTING</span>
+      i_structure_name = <span class="str">'ZTY_PO'</span>
+      i_save           = <span class="str">'A'</span>
+    <span class="kw">TABLES</span>
+      t_outtab         = <span class="nm">lt_po</span>
+    <span class="kw">EXCEPTIONS</span>
+      program_error    = <span class="lit">1</span>
+      <span class="kw">OTHERS</span>           = <span class="lit">2</span>.
+
+  <span class="kw">IF</span> <span class="fn">sy-subrc</span> <> <span class="lit">0</span>.
+    <span class="kw">MESSAGE</span> <span class="str">'ALV Display error — check structure ZTY_PO'</span> <span class="kw">TYPE</span> <span class="str">'E'</span>.
+  <span class="kw">ENDIF</span>.`;
+
+// ────────────────────────────────────────────────────────
+// RENDER FUNCTIONS
+// ────────────────────────────────────────────────────────
+function renderDetail(i) {
+  const s = steps[i];
+  document.getElementById('dpBadge').textContent = s.num;
+  document.getElementById('dpTitle').textContent = s.title;
+  document.getElementById('dpTcode').textContent = s.tcode;
+
+  function makeTable(data) {
+    let h = '<table class="info-table"><thead><tr>';
+    data.rows[0].forEach(c => h += `<th>${c}</th>`);
+    h += '</tr></thead><tbody>';
+    for (let r = 1; r < data.rows.length; r++) {
+      h += '<tr>';
+      data.rows[r].forEach((c,ci) => {
+        const cls = ci===0?'style="color:var(--text)"':'';
+        h += `<td ${cls}>${c}</td>`;
+      });
+      h += '</tr>';
+    }
+    return h + '</tbody></table>';
+  }
+
+  document.getElementById('dpBody').innerHTML = `
+    <div class="dp-desc">${s.desc}</div>
+    <div>
+      <div class="dp-col-title">${s.left.title}</div>
+      ${makeTable(s.left)}
+    </div>
+    <div>
+      <div class="dp-col-title">${s.right.title}</div>
+      ${makeTable(s.right)}
+    </div>
+  `;
+}
+
+function selectStep(i) {
+  document.querySelectorAll('.flow-step').forEach((el,idx) => {
+    el.classList.toggle('active', idx===i);
+  });
+  renderDetail(i);
+  document.getElementById('detailPanel').classList.add('fade-in');
+  setTimeout(()=>document.getElementById('detailPanel').classList.remove('fade-in'),400);
+}
+
+// ──── ALV TABLE ────
+let currentData = [...poData];
+let showSum = true;
+let sortAsc = true;
+
+function grStatus(row) {
+  if (row.grQty === 0) return 'none';
+  if (row.grQty >= row.orderQty) return 'full';
+  return 'partial';
+}
+function daysClass(d) {
+  if (d > 60) return 'days-crit';
+  if (d > 30) return 'days-warn';
+  return 'days-ok';
+}
+function grLabel(row) {
+  const s = grStatus(row);
+  if (s==='full') return `<span class="gr-full">● Full</span>`;
+  if (s==='partial') return `<span class="gr-part">◑ Partial</span>`;
+  return `<span class="gr-none">○ None</span>`;
+}
+
+function renderALV() {
+  const tbody = document.getElementById('alvBody');
+  tbody.innerHTML = '';
+  currentData.forEach((row,i) => {
+    const dc = daysClass(row.daysOpen);
+    tbody.innerHTML += `
+    <tr onclick="this.classList.toggle('selected')">
+      <td><input type="checkbox" onclick="event.stopPropagation()"/></td>
+      <td style="color:var(--blue2);font-weight:600">${row.poNum}</td>
+      <td>${row.vendor}</td>
+      <td style="font-size:11px">${row.material}</td>
+      <td>${row.poDate}</td>
+      <td><span class="days-chip ${dc}">${row.daysOpen}d</span></td>
+      <td style="text-align:right">${row.orderQty.toLocaleString()}</td>
+      <td style="text-align:right">${row.grQty.toLocaleString()}</td>
+      <td style="text-align:right">₹${row.netPrice.toLocaleString()}</td>
+      <td>${grLabel(row)}</td>
+    </tr>`;
+  });
+  document.getElementById('rowCountLabel').textContent = currentData.length + ' rows';
+  renderSumRow();
+}
+
+function renderSumRow() {
+  const tfoot = document.getElementById('alvFoot');
+  if (!showSum) { tfoot.innerHTML=''; return; }
+  const totalQty = currentData.reduce((a,r)=>a+r.orderQty,0);
+  const totalGR = currentData.reduce((a,r)=>a+r.grQty,0);
+  const totalVal = currentData.reduce((a,r)=>a+r.netPrice,0);
+  const avgDays = currentData.length ? Math.round(currentData.reduce((a,r)=>a+r.daysOpen,0)/currentData.length) : 0;
+  tfoot.innerHTML = `
+  <tr style="background:rgba(59,130,246,0.08);font-weight:600;font-size:12px;border-top:2px solid var(--border2)">
+    <td colspan="6" style="color:var(--text3);padding:8px 14px">TOTALS &nbsp; Avg Days: <span style="color:var(--yellow)">${avgDays}d</span></td>
+    <td style="text-align:right;padding:8px 14px;color:var(--text)">${totalQty.toLocaleString()}</td>
+    <td style="text-align:right;padding:8px 14px;color:var(--text)">${totalGR.toLocaleString()}</td>
+    <td style="text-align:right;padding:8px 14px;color:var(--teal)">₹${totalVal.toLocaleString()}</td>
+    <td></td>
+  </tr>`;
+}
+
+function runReport() {
+  document.getElementById('statusMsg').textContent = 'Executing ZPO_AGING_REPORT...';
+  document.getElementById('alvBody').innerHTML = '<tr><td colspan="10" style="text-align:center;padding:24px;color:var(--text3)">Loading...</td></tr>';
+  setTimeout(()=>{
+    currentData = [...poData];
+    renderALV();
+    const t = (Math.random()*0.5+0.2).toFixed(2);
+    document.getElementById('execTime').textContent = `Exec: ${t}s`;
+    document.getElementById('statusMsg').textContent = `Report executed — ${currentData.length} records found.`;
+  }, 600);
+}
+
+function applyFilter() {
+  const st = document.getElementById('filterStatus').value;
+  const ag = document.getElementById('filterAge').value;
+  const vn = document.getElementById('filterVendor').value.toLowerCase();
+  currentData = poData.filter(r => {
+    const gs = grStatus(r);
+    if (st !== 'all' && gs !== st) return false;
+    if (ag === 'critical' && r.daysOpen <= 60) return false;
+    if (ag === 'warn' && (r.daysOpen < 30 || r.daysOpen > 60)) return false;
+    if (ag === 'ok' && r.daysOpen >= 30) return false;
+    if (vn && !r.vendor.toLowerCase().includes(vn)) return false;
+    return true;
+  });
+  renderALV();
+  document.getElementById('statusMsg').textContent = `Filter applied — ${currentData.length} records shown.`;
+}
+
+function sortByDays() {
+  sortAsc = !sortAsc;
+  currentData.sort((a,b) => sortAsc ? a.daysOpen - b.daysOpen : b.daysOpen - a.daysOpen);
+  renderALV();
+}
+
+function sortCol(col) {
+  sortAsc = !sortAsc;
+  currentData.sort((a,b) => {
+    let va = a[col], vb = b[col];
+    if (typeof va === 'string') return sortAsc ? va.localeCompare(vb) : vb.localeCompare(va);
+    return sortAsc ? va - vb : vb - va;
+  });
+  renderALV();
+}
+
+function toggleSumRow() { showSum = !showSum; renderSumRow(); }
+
+function exportCSV() {
+  const headers = ['PO Number','Vendor','Material','PO Date','Days Open','Order Qty','GR Qty','Net Price'];
+  const rows = currentData.map(r => [r.poNum,r.vendor,r.material,r.poDate,r.daysOpen,r.orderQty,r.grQty,r.netPrice]);
+  const csv = [headers,...rows].map(r=>r.join(',')).join('\n');
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+  a.download = 'ZPO_AGING_REPORT.csv';
+  a.click();
+  document.getElementById('statusMsg').textContent = 'CSV exported: ZPO_AGING_REPORT.csv';
+}
+
+// ──── ERRORS ────
+function renderErrors() {
+  const el = document.getElementById('errorsList');
+  el.innerHTML = errors.map((e,i) => `
+  <div class="error-card" id="ec${i}" onclick="toggleError(${i})">
+    <div class="ec-header">
+      <div class="ec-icon">${e.icon}</div>
+      <div>
+        <div class="ec-module">${e.module}</div>
+        <div class="ec-title">${e.title}</div>
+      </div>
+      <span style="margin-left:auto;margin-right:12px;font-size:10px;background:rgba(245,158,11,0.12);color:var(--yellow);padding:2px 8px;border-radius:4px">${e.impact} Impact</span>
+      <div class="ec-arrow">›</div>
+    </div>
+    <div class="ec-body">
+      <div class="ec-body-grid">
+        <div><div class="ec-label">Root Cause</div><div class="ec-val">${e.cause}</div></div>
+        <div><div class="ec-label">Fix / Resolution</div><div class="ec-fix">${e.fix}</div><div style="margin-top:8px;font-size:10px;color:var(--text3)">T-Code: ${e.tcode}</div></div>
+      </div>
+    </div>
+  </div>`).join('');
+}
+
+function toggleError(i) {
+  document.getElementById('ec'+i).classList.toggle('open');
+}
+
+// ──── Q&A ────
+function renderQA() {
+  const el = document.getElementById('qaList');
+  el.innerHTML = qa.map((q,i) => `
+  <div class="qa-card" id="qa${i}">
+    <div class="qa-q" onclick="toggleQA(${i})">
+      <div class="q-mark">Q</div>
+      <div class="q-text">${q.q}</div>
+    </div>
+    <div class="qa-a">${q.a}</div>
+  </div>`).join('');
+}
+
+function toggleQA(i) {
+  document.getElementById('qa'+i).classList.toggle('open');
+}
+
+// ──── INIT ────
+document.getElementById('codeContent').innerHTML = abapCode;
+renderDetail(0);
+renderErrors();
+renderQA();
+runReport();
+
+// Smooth scroll for nav
+document.querySelectorAll('.h-nav a').forEach(a => {
+  a.addEventListener('click', e => {
+    e.preventDefault();
+    document.querySelectorAll('.h-nav a').forEach(x=>x.classList.remove('active'));
+    a.classList.add('active');
+    document.querySelector(a.getAttribute('href')).scrollIntoView({behavior:'smooth'});
+  });
+});
+
+function copyCode() {
+  const raw = `*&-------------------------------------------------------------*
+*& Report  ZPO_AGING_REPORT
+*& Custom PO Aging Report
+*&-------------------------------------------------------------*
+REPORT zpo_aging_report.
+
+TYPES: BEGIN OF ty_po,
+  ebeln     TYPE ekko-ebeln,
+  lifnr     TYPE ekko-lifnr,
+  bedat     TYPE ekko-bedat,
+  matnr     TYPE ekpo-matnr,
+  menge     TYPE ekpo-menge,
+  wemng     TYPE eket-wemng,
+  netpr     TYPE ekpo-netpr,
+  days_open TYPE i,
+END OF ty_po.
+
+DATA: lt_po TYPE TABLE OF ty_po.
+
+SELECTION-SCREEN BEGIN OF BLOCK b1 WITH FRAME TITLE 'Selection'.
+  PARAMETERS:     p_bukrs TYPE ekko-bukrs OBLIGATORY,
+                  p_werks TYPE ekpo-werks.
+  SELECT-OPTIONS: s_lifnr FOR ekko-lifnr,
+                  s_bedat FOR ekko-bedat.
+SELECTION-SCREEN END OF BLOCK b1.
+
+START-OF-SELECTION.
+  SELECT ekko~ebeln ekko~lifnr ekko~bedat
+         ekpo~matnr ekpo~menge ekpo~netpr
+    FROM ekko
+    JOIN ekpo ON ekpo~ebeln = ekko~ebeln
+    INTO TABLE @lt_po
+    WHERE ekko~bukrs = @p_bukrs
+      AND ekko~bstyp = 'F'
+      AND ekko~loekz = ' '
+      AND ekko~lifnr IN @s_lifnr
+      AND ekko~bedat IN @s_bedat
+      AND ekpo~elikz = ' '.
+
+  CHECK lt_po IS NOT INITIAL.
+
+  LOOP AT lt_po INTO DATA(ls_po).
+    ls_po-days_open = sy-datum - ls_po-bedat.
+    SELECT SUM( menge ) FROM ekbe INTO @ls_po-wemng
+      WHERE ebeln = @ls_po-ebeln AND vgabe = '1'.
+    MODIFY lt_po FROM ls_po.
+  ENDLOOP.
+
+  CALL FUNCTION 'REUSE_ALV_GRID_DISPLAY'
+    EXPORTING
+      i_structure_name = 'ZTY_PO'
+      i_save           = 'A'
+    TABLES
+      t_outtab         = lt_po
+    EXCEPTIONS
+      program_error    = 1
+      OTHERS           = 2.`;
+  navigator.clipboard.writeText(raw).then(()=>{
+    const btn = document.querySelector('.code-copy');
+    btn.textContent = '✓ Copied!';
+    setTimeout(()=>btn.textContent='⎘ Copy Code',2000);
+  });
+}
+</script>
+</body>
+</html>
